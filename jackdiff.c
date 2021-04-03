@@ -24,10 +24,10 @@ Copyright 2014 murray foster */
 #include<stdlib.h> //exit(0);
 #include<unistd.h>
 
-/* #include "osc.h" */
-/* #include "osc_handlers.h" */
+#include "global_t.h"
+#include "osc.h"
+#include "osc_handlers.h"
 #include "rtqueue.h"
-
 
 static jack_default_audio_sample_t ** outs ;
 static jack_default_audio_sample_t ** ins ;
@@ -46,10 +46,8 @@ static jack_port_t **input_port ;
 
 int global_audio_sample_size = 0;
 int global_audio_sample_count = 0;
-int *global_audio_buffer_in = NULL;
-int *global_audio_buffer_out = NULL;
-
-int global_audio_capture_flag = 0;
+float *global_audio_buffer_in = NULL;
+float *global_audio_buffer_out = NULL;
 
 /* BEGIN dsp_logic() STATE PARAMETERS */
 
@@ -74,7 +72,9 @@ dsplogic(float insample) {
   return insample;
 } /* dsplogic */
 
-static void*
+int global_audio_capture_flag = 0;
+
+void*
 dspthread(void *arg)
 {
   FILE *fp_in, *fp_out;
@@ -83,30 +83,38 @@ dspthread(void *arg)
   fp_in = fopen("output/signal_in.txt", "a");
   fp_out = fopen("output/signal_out.txt", "a");
   while(1) {
-
-    if( global_audio_capture_flag ) 
-      if( global_audio_sample_count >= global_audio_sample_size ) {
-        printf("writing..\n");
-        for(int i=0; i < global_audio_sample_count; i++) {
-          fprintf(fp_in, "%f\n", global_audio_buffer_in[i]);
-          fprintf(fp_out, "%f\n", global_audio_buffer_out[i]);
-        }
-        global_audio_sample_count = 0;
-        fclose(fp_in);
-        fclose(fp_out);
-        printf("exiting..");
-        exit(0);
+    if( global_audio_sample_count >= global_audio_sample_size ) { 
+      printf("writing..\n");
+      for(int i=0; i < global_audio_sample_count; i++) {
+        fprintf(fp_in, "%f\n", global_audio_buffer_in[i]);
+        fprintf(fp_out, "%f\n", global_audio_buffer_out[i]);
       }
+
+      lo_address lo_addr_send = lo_address_new("127.0.0.1", "10001");
+      lo_send(lo_addr_send, "/jackdiff/isready", "i", 0);
+      free(lo_addr_send);
+      printf("isready message sent..\n");
+      
+      fclose(fp_in);
+      fclose(fp_out);
+      printf("exiting..\n");
+      exit(0);
+    }
     
     insample = rtqueue_deq(fifo_in);
-    global_audio_buffer_in[global_audio_sample_count] = insample;
+
+    if( global_audio_capture_flag ) {
+      global_audio_buffer_in[global_audio_sample_count] = insample;
+    }
     
     outsample = dsplogic(insample);
     
     rtqueue_enq(fifo_out, outsample);
-    global_audio_buffer_out[global_audio_sample_count] = outsample;
 
-    global_audio_sample_count += 1;
+    if( global_audio_capture_flag ) {
+      global_audio_buffer_out[global_audio_sample_count] = outsample;
+      global_audio_sample_count += 1;
+    }
   }
 
 } /* dspthread */
@@ -249,8 +257,8 @@ int main(int argc, char *argv[])
   global_audio_buffer_in = malloc(sizeof(float) * global_audio_sample_size);
   global_audio_buffer_out = malloc(sizeof(float) * global_audio_sample_size);
 
-  /* printf("osc_setup()\n"); */
-  /* osc_setup(); */
+  printf("osc_setup()\n");
+  osc_setup("10000", "10001");
   
   printf("jack_setup()\n");
   jack_setup("jackdiff");
