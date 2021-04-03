@@ -51,6 +51,8 @@ float *global_audio_buffer_out = NULL;
 
 /* BEGIN dsp_logic() STATE PARAMETERS */
 
+
+
 /* END dsp_logic() STATE PRARMETERS */
 
 void print_usage() {
@@ -65,7 +67,7 @@ dsplogic(float insample) {
 
   /* BEGIN DSP CODE */
 
-  return insample;
+  
   
   /* END DSP CODE */
   
@@ -82,6 +84,13 @@ dspthread(void *arg)
   
   fp_in = fopen("output/signal_in.txt", "a");
   fp_out = fopen("output/signal_out.txt", "a");
+
+  /* BEGIN INIT DSP STATE */
+
+  
+  
+  /* END INIT DSP STATE */
+  
   while(1) {
     if( global_audio_sample_count >= global_audio_sample_size ) { 
       printf("writing..\n");
