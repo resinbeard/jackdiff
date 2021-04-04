@@ -26,7 +26,7 @@ there's two parts to this:
 
 ## Installing
 ```
-$ git clone https://github.com/bonemurmurer/jackdiff.git
+$ git clone https://github.com/resinbeard/jackdiff.git
 ```
 
 ## Building
