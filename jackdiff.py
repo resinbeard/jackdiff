@@ -75,9 +75,9 @@ def run():
     print('mplayer_cmd: ')
     print(mplayer_cmd)
     
-    subprocess.Popen(f"./jackdiff -l {sample_length}", shell=True,
-                     stdout=subprocess.PIPE,
-                     stderr=subprocess.STDOUT)
+    subprocess.Popen(f"./jackdiff -l {sample_length}", shell=True);
+                     # stdout=subprocess.PIPE,
+                     # stderr=subprocess.STDOUT)
     subprocess.Popen(f"{mplayer_cmd}", shell=True,
                      stdout=subprocess.PIPE,
                      stderr=subprocess.STDOUT)

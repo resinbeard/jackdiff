@@ -51,11 +51,21 @@ float *global_audio_buffer_out = NULL;
 
 /* BEGIN dsp_logic() STATE PARAMETERS */
 
+int dsp_param_pos = 0;
+float dsp_param_sensitivity = 0.0f;
+float dsp_param_attack_ms = 0.0f;
+float dsp_param_decay_ms = 0.0f;
+float dsp_param_scale = 0.0f;
 
+float dsp_state_x0 = 0.0f;
+float dsp_state_x1 = 0.0f;
+
+int jack_samplerate = 48000;
 
 /* END dsp_logic() STATE PRARMETERS */
 
-void print_usage() {
+void
+print_usage() {
   printf("Usage: jackdiff [options] [arg]\n\n");
   printf("Options:\n"
 	 " -h, --help       displays this menu\n"
@@ -64,14 +74,44 @@ void print_usage() {
 
 float
 dsplogic(float insample) {
-
+  float outsample = 0.0f;
+  
   /* BEGIN DSP CODE */
 
+  float sensitivity = dsp_param_sensitivity;
+  float attack_ms = dsp_param_attack_ms;
+  float decay_ms = dsp_param_decay_ms;
+  float scale = dsp_param_scale;
   
+  float coeff_attack = exp(log(0.01f) / (attack_ms * jack_samplerate * 0.001f));
+  float coeff_decay = exp(log(0.01f) / (decay_ms * jack_samplerate * 0.001f));
   
+  float odf_output, absin = 0.0f;
+  int is_onset = 0;
+
+  absin = fabs(insample);
+
+  if(absin > dsp_state_x0)
+    odf_output = coeff_attack * (dsp_state_x0 - absin) + absin;
+  else
+    odf_output = coeff_decay * (dsp_state_x0 - absin) + absin;
+
+  if( (odf_output > dsp_state_x0) &&
+      (odf_output > dsp_state_x1) ) {
+    if( insample > sensitivity )
+      is_onset = 1;
+  }
+  
+  dsp_state_x1 = dsp_state_x0;
+  dsp_state_x0 = odf_output;
+
+  if( is_onset )
+    outsample = odf_output;
+  else
+    outsample = 0.0;  
   /* END DSP CODE */
   
-  return insample;
+  return outsample;
 } /* dsplogic */
 
 int global_audio_capture_flag = 0;
@@ -87,7 +127,13 @@ dspthread(void *arg)
 
   /* BEGIN INIT DSP STATE */
 
-  
+  dsp_param_sensitivity = 0.10f;
+  dsp_param_attack_ms = 100.0f;
+  dsp_param_decay_ms = 100.0f;
+  dsp_param_scale = 1.0f;
+
+  dsp_state_x0 = 0.0f;
+  dsp_state_x1 = 0.0f;
   
   /* END INIT DSP STATE */
   
